@@ -10,5 +10,9 @@ c.execute('''CREATE TABLE taxi
              availability int,
              region text
              )''')
+c.execute('''CREATE TABLE area
+             (lat real,
+              lng real,
+              area text)''')
 db.commit()
 db.close()
