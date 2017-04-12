@@ -2,7 +2,7 @@ import http.client
 import json
 import sqlite3
 
-def getPostalCode(lng, lat):
+def getPostalCode(lat, lng):
     conn = http.client.HTTPConnection("maps.googleapis.com")
 
     payload = ""
@@ -18,11 +18,10 @@ def getPostalCode(lng, lat):
                 return addr["long_name"]
     return ""
 
-def getArea(lng, lat):
+def getArea(lat, lng):
     conn = http.client.HTTPConnection("maps.googleapis.com")
 
     payload = ""
-
     conn.request("GET", "/maps/api/geocode/json?latlng=" + str(lat) + "," + str(lng), payload)
     res = conn.getresponse()
     data = res.read()
@@ -34,11 +33,43 @@ def getArea(lng, lat):
                 return addr["long_name"]
     return ""
 
+def populateAreaDB():
+    db = sqlite3.connect("taxi.db")
+    c = db.cursor()
+    for i in range(120, 150):
+        for j in range(10350, 10400):
+            area = getArea(i/100, j/100)
+            if(area == ""):
+                continue
+            print(i, j, area)
+            c.execute("INSERT INTO area VALUES(?,?,?)", (i/100, j/100, area))
+    db.commit()
+    db.close()
 
+def getAreasFromDB(c):
+    areas = []
+    for row in c.execute("Select * FROM area"):
+        areas.append(row)
+    return areas
 
+def getArea(areas, lat, lng):
+    ans = ""
+
+    currentMin = 2000000000
+    for area in areas:
+        temp = abs(lat - area[0]) + abs(lng - area[1])
+        if(temp < currentMin):
+            currentMin = temp
+            ans = area[2]
+    return ans
+        
+#populateAreaDB()
+
+    
 db = sqlite3.connect("taxi.db")
 c = db.cursor()
 
+areaList = getAreasFromDB(c)
 conn = http.client.HTTPSConnection("api.data.gov.sg")
 
 payload = ""
@@ -61,14 +92,11 @@ for x in range(0, 25):
     coords = data["features"][0]["geometry"]["coordinates"]
     availability = len(coords)
     print("Number of available taxis: " + str(availability))
+    
     if(availability > 0):
-        count = 0
         areas = dict()
         for coord in coords:
-            count += 1
-            if(count == 100):
-                break
-            area = getArea(data["features"][0]["geometry"]["coordinates"][0][0], data["features"][0]["geometry"]["coordinates"][0][1])
+            area = getArea(areaList, coord[1], coord[0])
             if area != "":
                 if(area in areas):
                     areas[area] += 1
