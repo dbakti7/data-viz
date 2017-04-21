@@ -8,7 +8,8 @@ c.execute('''CREATE TABLE taxi
              minute text,
              second text,
              availability int,
-             region text
+             region text,
+             forecast text
              )''')
 c.execute('''CREATE TABLE area
              (lat real,
